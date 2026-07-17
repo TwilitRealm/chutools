@@ -7,4 +7,5 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="jampacked/jampacked.csproj" />
+  <Project Path="wsystool/wsystool.csproj" />
 </Solution>
