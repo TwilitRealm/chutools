@@ -8,14 +8,6 @@ namespace jampacked
     {
         static void Main(string[] args)
         {
-#if DEBUG 
-            args = new string[]
-            {
-                "pack",
-                "out",
-                "test.aaf"
-            };
-#endif 
             cmdarg.cmdargs = args;
             Console.WriteLine("jampacked JAudio Archive packer / unpacker");
             var operation = cmdarg.assertArg(0, "operation");
