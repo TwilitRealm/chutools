@@ -1,12 +1,13 @@
 ﻿using Be.IO.Helpers;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace Be.IO
 {
-    public unsafe class BeBinaryWriter : BinaryWriter
+    public class BeBinaryWriter : BinaryWriter
     {
         private static readonly Encoding UTF8NoBomThrows = new UTF8Encoding(false, true);
 
@@ -28,64 +29,59 @@ namespace Be.IO
 
         public override void Write(decimal value)
         {
+            throw new NotSupportedException();
+            /*
             fixed (byte* p = buffer)
                 BigEndian.WriteDecimal(p, value);
             OutStream.Write(buffer, 0, 16);
+            */
         }
 
         public override void Write(double value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt64(p, Reinterpret.DoubleAsInt64(value));
+            BinaryPrimitives.WriteDoubleBigEndian(buffer, value);
             OutStream.Write(buffer, 0, 8);
         }
 
         public override void Write(float value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteDecimal(p, Reinterpret.FloatAsInt32(value));
+            BinaryPrimitives.WriteSingleBigEndian(buffer, value);
             OutStream.Write(buffer, 0, 4);
         }
 
         public override void Write(int value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt32(p, value);
+            BinaryPrimitives.WriteInt32BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 4);
         }
 
         public override void Write(long value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt64(p, value);
+            BinaryPrimitives.WriteInt64BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 8);
         }
 
         public override void Write(short value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt16(p, value);
+            BinaryPrimitives.WriteInt16BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 2);
         }
 
         public override void Write(uint value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt32(p, (int)value);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 4);
         }
 
         public override void Write(ulong value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt64(p, (long)value);
+            BinaryPrimitives.WriteUInt64BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 8);
         }
 
         public override void Write(ushort value)
         {
-            fixed (byte* p = buffer)
-                BigEndian.WriteInt16(p, (short)value);
+            BinaryPrimitives.WriteUInt16BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 2);
         }
     }

@@ -1,12 +1,13 @@
 ﻿using Be.IO.Helpers;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace Be.IO
 {
-    public unsafe class BeBinaryReader : BinaryReader
+    public class BeBinaryReader : BinaryReader
     {
         private static readonly Encoding UTF8NoBom = new UTF8Encoding();
 
@@ -32,65 +33,60 @@ namespace Be.IO
 
         public override decimal ReadDecimal()
         {
+            throw new NotSupportedException();
+            /*
             FillBuffer(16);
             fixed (byte* p = buffer)
                 return BigEndian.ReadDecimal(p);
+            */
         }
 
         public override double ReadDouble()
         {
             FillBuffer(8);
-            fixed (byte* p = buffer)
-                return Reinterpret.Int64AsDouble(BigEndian.ReadInt64(p));
+            return BinaryPrimitives.ReadDoubleBigEndian(buffer);
         }
 
         public override short ReadInt16()
         {
             FillBuffer(2);
-            fixed (byte* p = buffer)
-                return BigEndian.ReadInt16(p);
+            return BinaryPrimitives.ReadInt16BigEndian(buffer);
         }
 
         public override int ReadInt32()
         {
             FillBuffer(4);
-            fixed (byte* p = buffer)
-                return BigEndian.ReadInt32(p);
+            return BinaryPrimitives.ReadInt32BigEndian(buffer);
         }
 
         public override long ReadInt64()
         {
             FillBuffer(8);
-            fixed (byte* p = buffer)
-                return BigEndian.ReadInt64(p);
+            return BinaryPrimitives.ReadInt64BigEndian(buffer);
         }
 
         public override float ReadSingle()
         {
             FillBuffer(4);
-            fixed (byte* p = buffer)
-                return Reinterpret.Int32AsFloat(BigEndian.ReadInt32(p));
+            return BinaryPrimitives.ReadSingleBigEndian(buffer);
         }
 
         public override ushort ReadUInt16()
         {
             FillBuffer(2);
-            fixed (byte* p = buffer)
-                return (ushort)BigEndian.ReadInt16(p);
+            return BinaryPrimitives.ReadUInt16BigEndian(buffer);
         }
 
         public override uint ReadUInt32()
         {
             FillBuffer(4);
-            fixed (byte* p = buffer)
-                return (uint)BigEndian.ReadInt32(p);
+            return  BinaryPrimitives.ReadUInt32BigEndian(buffer);
         }
 
         public override ulong ReadUInt64()
         {
             FillBuffer(8);
-            fixed (byte* p = buffer)
-                return (ulong)BigEndian.ReadInt64(p);
+            return BinaryPrimitives.ReadUInt64BigEndian(buffer);
         }
 
         protected override void FillBuffer(int numBytes)

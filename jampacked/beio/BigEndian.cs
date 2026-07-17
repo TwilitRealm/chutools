@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Be.IO.Helpers
 {
+    /*
     internal unsafe static class BigEndian
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -83,4 +84,5 @@ namespace Be.IO.Helpers
             WriteInt32(p + 12, flags);
         }
     }
+    */
 }

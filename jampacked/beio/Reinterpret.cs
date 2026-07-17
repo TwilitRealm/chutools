@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Be.IO.Helpers
 {
+    /*
     internal unsafe static class Reinterpret
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -22,4 +23,5 @@ namespace Be.IO.Helpers
         public static double Int64AsDouble(long l)
             => *(double*)&l;
     }
+    */
 }
