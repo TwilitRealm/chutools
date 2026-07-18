@@ -28,13 +28,6 @@ namespace xayrga.bast
             Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             Console.ForegroundColor = ConsoleColor.Gray;
 
-            args = new string[] { 
-            "unpackbst",
-            "0.bst",
-            "1.bstn",
-            "MKDDOut"
-            };
-           
             /*
             var w = File.OpenRead("1.bstn");
             var k = new BeBinaryReader(w);
