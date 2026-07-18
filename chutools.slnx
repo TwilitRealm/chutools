@@ -6,6 +6,8 @@
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>
+  <Project Path="bast/bast.csproj" />
+  <Project Path="beio/beio.csproj" />
   <Project Path="jampacked/jampacked.csproj" />
   <Project Path="wsystool/wsystool.csproj" />
 </Solution>
