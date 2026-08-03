@@ -8,6 +8,7 @@
   </Folder>
   <Project Path="bast/bast.csproj" />
   <Project Path="beio/beio.csproj" />
+  <Project Path="ibnktool/ibnktool.csproj" />
   <Project Path="jampacked/jampacked.csproj" />
   <Project Path="wsystool/wsystool.csproj" />
 </Solution>
