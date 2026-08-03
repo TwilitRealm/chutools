@@ -40,15 +40,28 @@ public sealed class SectionAnnotation : BaseDocumentAnnotation
 }
 
 
-public sealed record DecodedOpcode(string Text)
+public sealed class DecodedOpcode
 {
+    public Disassembler.OpcodeDef Opcode { get; }
+    public Disassembler.OpcodeArgument[] Arguments { get; }
 
+    public DecodedOpcode(Disassembler.OpcodeDef opcode, Disassembler.OpcodeArgument[] arguments)
+    {
+        Opcode = opcode;
+        Arguments = arguments;
+    }
+
+    public DecodedOpcode(in Disassembler.OpcodeContext context) : this(context.Def, context.Args)
+    {
+
+    }
 }
 
 public sealed class Document
 {
     public byte[] Data { get; }
     public AvlTree<uint, BaseDocumentAnnotation> Annotations { get; } = new();
+    public Dictionary<uint, List<(int category, int idx)>> EntryPoints { get; } = new();
 
     public Document(byte[] data)
     {

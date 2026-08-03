@@ -71,6 +71,24 @@ public sealed class AvlTree<TIndex, TItem> where TIndex : IComparable<TIndex> wh
             SearchOverlappingRecursive(right, interval, results);
     }
 
+    public List<TItem> GetAll()
+    {
+        var list = new List<TItem>();
+        GetAllRecursive(_root, list);
+        return list;
+    }
+
+    private static void GetAllRecursive(Node? node, List<TItem> results)
+    {
+        if (node == null)
+            return;
+
+        results.Add(node.Value);
+
+        GetAllRecursive(node.Left, results);
+        GetAllRecursive(node.Right, results);
+    }
+
     private static Node AddRecursive(Node? node, TItem value, out bool heightIncreased)
     {
         if (node == null)

@@ -11,11 +11,13 @@ using xayrga.bast;
 var argFile = new Argument<FileInfo>("input");
 var argOutput = new Argument<FileInfo>("output");
 var argBstn = new Option<FileInfo>("--bstn");
+var optionFormat = new Option<DisassemblyFormat>("--format");
 
 var rootCmd = new RootCommand();
 rootCmd.Arguments.Add(argFile);
 rootCmd.Arguments.Add(argOutput);
 rootCmd.Options.Add(argBstn);
+rootCmd.Options.Add(optionFormat);
 
 rootCmd.SetAction(result =>
 {
@@ -53,8 +55,6 @@ rootCmd.SetAction(result =>
 
     document.Annotations.Insert(new SectionAnnotation(new Interval<uint>(0, 8 + (uint)numCategories * 4), "Header"));
 
-    var entryPoints = new Dictionary<uint, List<(int category, int idx)>>();
-
     for (var i = 0; i < numCategories; i++)
     {
         reader.BaseStream.Position = 8 + (uint)i * 4;
@@ -69,18 +69,16 @@ rootCmd.SetAction(result =>
         for (var o = 0; o < offsetCount; o++)
         {
             var itemOffset = reader.ReadUInt32BE();
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(entryPoints, itemOffset, out _);
+            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(document.EntryPoints, itemOffset, out _);
             list ??= [];
             list.Add((i, o));
         }
     }
 
-    using var writer = new StreamWriter(result.GetValue(argOutput)!.Create());
-
     var disassembler = new Disassembler(reader, document);
 
     // Start disassembling from entry points defined in headers.
-    foreach (var entryPoint in entryPoints)
+    foreach (var entryPoint in document.EntryPoints)
     {
         try
         {
@@ -95,75 +93,21 @@ rootCmd.SetAction(result =>
     ExpandJumpTables(document);
     DisassembleJumpTableTargets(document, reader, disassembler);
 
-    foreach (var annotation in document.Annotations.SearchOverlapping(new Interval<uint>(0, (uint)ms.Length))
-                 .OrderBy(c => c.Interval.StartPos))
+    switch (result.GetValue(optionFormat))
     {
-        switch (annotation)
-        {
-            case SectionAnnotation section:
-                writer.WriteLine(";");
-                writer.WriteLine($"; SECTION {section.Name}");
-                writer.WriteLine(";");
-                break;
-
-            case OpcodeAnnotation opcode:
-                var startPos = opcode.Interval.StartPos;
-                if (entryPoints.TryGetValue(startPos, out var sounds))
-                {
-                    foreach (var entry in sounds)
-                    {
-                        writer.Write($"; ENTRY: {entry.category}, 0x{entry.idx:X04}");
-
-                        if (bstn != null)
-                        {
-                            var bstnEntry = bstn.categories[0].libraries[entry.category].sounds[entry.idx];
-                            writer.Write($" ({bstnEntry.name})");
-                        }
-
-                        writer.WriteLine();
-                    }
-                }
-
-                writer.Write($"{startPos:X6}  ");
-
-                WriteRawBytes(reader, opcode.Interval, writer);
-
-                writer.WriteLine(opcode.Decoded.Text);
-                break;
-
-            case JumpTableAnnotation:
-                writer.WriteLine("; Jump table");
-
-                for (var i = annotation.Interval.StartPos; (i + 3) <= annotation.Interval.EndPos; i += 3)
-                {
-                    writer.Write($"{i:X6}  ");
-                    WriteRawBytes(reader, new Interval<uint>(i, i + 3), writer);
-                    writer.WriteLine();
-                }
-
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
+        case DisassemblyFormat.PlainText:
+            OutputPlainText.Output(result.GetValue(argOutput)!, document, reader, bstn);
+            break;
+        case DisassemblyFormat.Html:
+            OutputHtml.Output(result.GetValue(argOutput)!, document, reader, bstn);
+            break;
+        default:
+            throw new ArgumentOutOfRangeException();
     }
 });
 
 return rootCmd.Parse(args).Invoke();
 
-static void WriteRawBytes(BinaryReader reader, Interval<uint> interval, TextWriter target)
-{
-    var bytes = "";
-
-    reader.BaseStream.Position = interval.StartPos;
-
-    while (reader.BaseStream.Position < interval.EndPos)
-    {
-        bytes += $"{reader.ReadByte():X2} ";
-    }
-
-    target.Write("{0,-20}", bytes);
-}
 
 static void ExpandJumpTables(Document document)
 {
@@ -200,4 +144,10 @@ static void DisassembleJumpTableTargets(Document document, BinaryReader reader, 
             disassembler.DisassembleFrom(addr);
         }
     }
+}
+
+public enum DisassemblyFormat
+{
+    PlainText,
+    Html
 }

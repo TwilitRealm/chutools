@@ -32,10 +32,6 @@ public partial class Disassembler(BinaryReader reader, Document document)
         while (true)
         {
             _opStartPos = (uint)_reader.BaseStream.Position;
-            if (_opStartPos == 0x0089CE)
-            {
-
-            }
             if (_document.Annotations.SearchOverlapping(new Interval<uint>(_opStartPos, _opStartPos + 1)).Count > 0)
             {
                 break;
@@ -111,27 +107,27 @@ public partial class Disassembler(BinaryReader reader, Document document)
 
     private DisassembleResult DisCommand(byte cmd, ushort val2)
     {
-        OpcodeDef def;
+        OpcodeDef? def;
         if (cmd != 0xb0)
         {
             if (cmd < 0xA0)
-                return DisassembleResult.Continue("INVALID");
+                return DisassembleResult.Continue(NewContext(DefInvalid, []));
 
             def = Opcodes[cmd - 0xa0];
         }
         else
         {
             //cmdInfo = &sExtCmdInfo[seqCtrl->readByte() & 0xff];
-            return DisassembleResult.Continue("EXT");
+            return DisassembleResult.Continue(NewContext(DefExt, []));
         }
 
         var parameterTypes = val2;
 
-        var invalid = def.Name == null && def.Handler == null;
-        var args = new OpcodeArgument[invalid ? 0 : def.Parameters.Length];
+        var invalid = def == null;
+        var args = new OpcodeArgument[def?.Parameters.Length ?? 0];
         for (var i = 0; i < args.Length; i++, parameterTypes >>= 2)
         {
-            var paramType = def.Parameters[i].Type;
+            var paramType = def!.Parameters[i].Type;
             if ((parameterTypes & 3) == 3)
                 paramType = OpcodeParamType.Register;
 
@@ -156,116 +152,42 @@ public partial class Disassembler(BinaryReader reader, Document document)
 
         if (invalid)
         {
-            return DisassembleResult.Continue("INVALID");
+            return DisassembleResult.Continue(NewContext(DefInvalid, []));
         }
 
-        var ctx = new OpcodeContext { Dis = this, Args = args, Def = def };
+        var ctx = NewContext(def!, args);
+        var handler = def!.Handler ?? DisDefault;
 
-        if (def.Name != null)
-        {
-            var decoded = DefaultDisassemble(def.Name, ctx);
-            return DisassembleResult.Continue(decoded);
-        }
-        else
-        {
-            return def.Handler!(ctx);
-        }
+        return handler(in ctx);
     }
 
-    private static string DefaultDisassemble(string name, in OpcodeContext context)
+    private OpcodeContext NewContext(OpcodeDef def, OpcodeArgument[] args)
     {
-        var sb = new StringBuilder();
-        sb.Append(name);
-        sb.Append(' ');
-
-        for (var i = 0; i < context.Args.Length; i++)
-        {
-            if (i != 0)
-                sb.Append(',');
-
-            var arg = context.Args[i];
-            var param = context.Def.Parameters[i];
-
-            string? fmt = null;
-            if (param.Format == OpcodeFormat.OutReg)
-            {
-                sb.Append('r');
-            }
-            else if (param.Format == OpcodeFormat.Xref)
-            {
-                fmt = "X06";
-                sb.Append("0x");
-            }
-
-            sb.Append(arg.ToString(fmt, null));
-        }
-
-        return sb.ToString();
+        return new OpcodeContext { Dis = this, Args = args, Def = def };
     }
 
-    /*
-    private void WriteOpcode(string opcode)
-    {
-        WriteOpcodePreamble();
-        if (_prefixCode != null)
-        {
-            _writer.Write(_prefixCode);
-            _prefixCode = null;
-        }
-
-        _writer.WriteLine(opcode);
-    }
-
-    private void WriteOpcodePreamble()
-    {
-        if (_entryPoints.TryGetValue(_opStartPos, out var sound))
-        {
-            foreach (var entry in sound)
-            {
-                _writer.WriteLine($"; ENTRY: {entry.category}, 0x{entry.idx:X04}");
-            }
-        }
-
-        _writer.Write($"{_opStartPos:X6}  ");
-
-        var bytes = "";
-
-        var endPos = _reader.BaseStream.Position;
-        _reader.BaseStream.Position = _opStartPos;
-
-        while (_reader.BaseStream.Position < endPos)
-        {
-            bytes += $"{_reader.ReadByte():X2} ";
-        }
-
-        _reader.BaseStream.Position = endPos;
-
-        _writer.Write("{0,-20}", bytes);
-    }
-    */
-
-    private record struct DisassembleResult(DisassembleResultStatus Status, uint JumpTarget, DecodedOpcode Decoded)
+    public record struct DisassembleResult(DisassembleResultStatus Status, uint JumpTarget, DecodedOpcode Decoded)
     {
         public static DisassembleResult Jump(DecodedOpcode decoded, uint target) =>
-            new(DisassembleResultStatus.Stop, 0, decoded);
+            new(DisassembleResultStatus.Stop, target, decoded);
 
-        public static DisassembleResult Jump(string decoded, uint target) =>
-            new(DisassembleResultStatus.Stop, 0, new DecodedOpcode(decoded));
+        public static DisassembleResult Jump(in OpcodeContext ctx, uint target) =>
+            new(DisassembleResultStatus.Stop, target, new DecodedOpcode(ctx));
 
         public static DisassembleResult Continue(DecodedOpcode decoded) =>
             new(DisassembleResultStatus.Continue, 0, decoded);
 
-        public static DisassembleResult Continue(string decoded) =>
-            new(DisassembleResultStatus.Continue, 0, new DecodedOpcode(decoded));
+        public static DisassembleResult Continue(in OpcodeContext ctx) =>
+            new(DisassembleResultStatus.Continue, 0, new DecodedOpcode(ctx));
 
         public static DisassembleResult Stop(DecodedOpcode decoded) =>
             new(DisassembleResultStatus.Stop, 0, decoded);
 
-        public static DisassembleResult Stop(string decoded) =>
-            new(DisassembleResultStatus.Stop, 0, new DecodedOpcode(decoded));
+        public static DisassembleResult Stop(in OpcodeContext ctx) =>
+            new(DisassembleResultStatus.Stop, 0, new DecodedOpcode(ctx));
     }
 
-    private enum DisassembleResultStatus : byte
+    public enum DisassembleResultStatus : byte
     {
         Continue,
         Stop,
