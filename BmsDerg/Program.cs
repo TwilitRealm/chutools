@@ -140,6 +140,7 @@ static void DisassembleJumpTableTargets(Document document, BinaryReader reader, 
         {
             reader.BaseStream.Position = i;
             var addr = reader.ReadUInt24BE();
+            document.InsertXref(addr, Xref.FromXref(i));
             disassembler.DisassembleFrom(addr);
         }
     }
