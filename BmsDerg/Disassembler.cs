@@ -62,7 +62,8 @@ public partial class Disassembler(BinaryReader reader, Document document)
             _document.Annotations.Insert(
                 new OpcodeAnnotation(
                     new Interval<uint>(_opStartPos, (uint)_reader.BaseStream.Position),
-                    result.Decoded));
+                    result.Decoded,
+                    result.Status));
 
             switch (result.Status)
             {
@@ -144,8 +145,11 @@ public partial class Disassembler(BinaryReader reader, Document document)
                 ? OpcodeArgumentType.Register
                 : OpcodeArgumentType.Immediate;
 
-            if (paramType == OpcodeParamType.CodePointer)
+            if (paramType == OpcodeParamType.CodePointer && argType == OpcodeArgumentType.Immediate)
+            {
+                InsertXrefFromCurrentOpcode(value);
                 QueueDis(value);
+            }
 
             args[i] = new OpcodeArgument { Type = argType, Value = value };
         }
@@ -164,6 +168,11 @@ public partial class Disassembler(BinaryReader reader, Document document)
     private OpcodeContext NewContext(OpcodeDef def, OpcodeArgument[] args)
     {
         return new OpcodeContext { Dis = this, Args = args, Def = def };
+    }
+
+    private void InsertXrefFromCurrentOpcode(uint target)
+    {
+        _document.InsertXref(target, Xref.FromXref(_opStartPos));
     }
 
     public record struct DisassembleResult(DisassembleResultStatus Status, uint JumpTarget, DecodedOpcode Decoded)

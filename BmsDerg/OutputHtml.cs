@@ -20,7 +20,7 @@ public sealed class OutputHtml
                     background-color: #1E1E1E;
                     color: #D4D4D4;
                 }
-                .pos {
+                .pos, .number {
                     color: #B5CEA8;
                 }
                 .comment {
@@ -31,6 +31,18 @@ public sealed class OutputHtml
                 }
                 .xref {
                     color: #9CDCFE;
+                }
+                .opcode {
+                    color: #DCDCAA;
+                }
+                .register {
+                    color: #569CD6;
+                }
+                .terminating {
+                    border-bottom: solid 1px #D4D4D4;
+                    padding-bottom: 1px;
+                    margin-bottom: 8px;
+                    display: inline-block;
                 }
             }
             </style>
@@ -63,37 +75,38 @@ public sealed class OutputHtml
 
                 case OpcodeAnnotation opcode:
                     var startPos = opcode.Interval.StartPos;
-                    if (document.EntryPoints.TryGetValue(startPos, out var sounds))
-                    {
-                        foreach (var entry in sounds)
-                        {
-                            var commentText = $"; ENTRY: {entry.category}, 0x{entry.idx:X04}";
 
-                            if (bstn != null)
-                            {
-                                var bstnEntry = bstn.categories[0].libraries[entry.category].sounds[entry.idx];
-                                commentText += $" ({bstnEntry.name})";
-                            }
+                    BeforeAddress(document, startPos, writer, bstn);
 
-                            WriteComment(commentText, writer);
-                        }
-                    }
+                    if (opcode.Status != Disassembler.DisassembleResultStatus.Continue)
+                        writer.Write("<span class='terminating'>");
 
                     WriteStartPos(startPos, writer);
                     WriteRawBytes(reader, opcode.Interval, writer);
 
                     var cmdText = DefaultDisassemble(opcode.Decoded.Opcode, opcode.Decoded.Arguments);
+
+                    if (opcode.Status != Disassembler.DisassembleResultStatus.Continue)
+                        cmdText += "</span>";
+
                     writer.WriteLine(cmdText);
                     break;
 
                 case JumpTableAnnotation:
                     WriteComment("; Jump table", writer);
+                    BeforeAddress(document, annotation.Interval.StartPos, writer, bstn);
 
+                    var c = 0;
                     for (var i = annotation.Interval.StartPos; (i + 3) <= annotation.Interval.EndPos; i += 3)
                     {
                         WriteStartPos(i, writer);
                         WriteRawBytes(reader, new Interval<uint>(i, i + 3), writer);
-                        writer.WriteLine();
+                        reader.BaseStream.Position = i;
+                        writer.Write(XrefLink(reader.ReadUInt24BE()));
+
+                        WriteComment($" ; {c}", writer);
+
+                        c += 1;
                     }
 
                     break;
@@ -135,16 +148,19 @@ public sealed class OutputHtml
     public static string DefaultDisassemble(in Disassembler.OpcodeDef def, Disassembler.OpcodeArgument[] args)
     {
         var sb = new StringBuilder();
-        sb.Append(def.Name);
+        sb.Append($"<span class='opcode'>{def.Name.PadRight(10)}</span>");
         sb.Append(' ');
 
         for (var i = 0; i < args.Length; i++)
         {
             if (i != 0)
-                sb.Append(',');
+                sb.Append(", ");
 
             var arg = args[i];
             var param = def.Parameters[i];
+
+            if (param.Name != null)
+                sb.Append($"<span title='{param.Name}'>");
 
             if (param.Format == Disassembler.OpcodeFormat.RegId)
             {
@@ -168,14 +184,49 @@ public sealed class OutputHtml
             }
             else if (param.Format == Disassembler.OpcodeFormat.Xref)
             {
-                sb.Append($"<a class='xref' href='#pos-{arg:X6}'>0x{arg:X06}</a>");
+                sb.Append(XrefLink(arg.Value));
             }
             else
             {
                 sb.Append($"<span class='number'>{arg}</span>");
             }
+
+            if (param.Name != null)
+                sb.Append($"</span>");
         }
 
         return sb.ToString();
+    }
+
+    private static string XrefLink(uint value)
+    {
+        return $"<a class='xref' href='#pos-{value:X6}'>0x{value:X06}</a>";
+    }
+
+    private static void BeforeAddress(Document document, uint address, TextWriter writer, JBST? bstn)
+    {
+        if (!document.Xrefs.TryGetValue(address, out var sounds))
+            return;
+
+        foreach (var entry in sounds.OrderBy(e => e.Type).ThenBy(e => e.Category).ThenBy(e => e.Idx))
+        {
+            if (entry.Type == XrefType.EntryPoint)
+            {
+                var commentText = $"; ENTRY: {entry.Category}, 0x{entry.Idx:X04}";
+
+                if (bstn != null)
+                {
+                    var bstnEntry = bstn.categories[0].libraries[entry.Category].sounds[entry.Idx];
+                    commentText += $" ({bstnEntry.name})";
+                }
+
+                WriteComment(commentText, writer);
+            }
+            else
+            {
+                var commentText = $"; XREF: {XrefLink(entry.Idx)}";
+                WriteComment(commentText, writer);
+            }
+        }
     }
 }

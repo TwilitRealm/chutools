@@ -24,15 +24,15 @@ public sealed class OutputPlainText
 
                 case OpcodeAnnotation opcode:
                     var startPos = opcode.Interval.StartPos;
-                    if (document.EntryPoints.TryGetValue(startPos, out var sounds))
+                    if (document.Xrefs.TryGetValue(startPos, out var sounds))
                     {
                         foreach (var entry in sounds)
                         {
-                            writer.Write($"; ENTRY: {entry.category}, 0x{entry.idx:X04}");
+                            writer.Write($"; XREF: {entry.Type} {entry.Category}, 0x{entry.Idx:X04}");
 
-                            if (bstn != null)
+                            if (entry.Type == XrefType.EntryPoint && bstn != null)
                             {
-                                var bstnEntry = bstn.categories[0].libraries[entry.category].sounds[entry.idx];
+                                var bstnEntry = bstn.categories[0].libraries[entry.Category].sounds[entry.Idx];
                                 writer.Write($" ({bstnEntry.name})");
                             }
 

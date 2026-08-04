@@ -69,16 +69,15 @@ rootCmd.SetAction(result =>
         for (var o = 0; o < offsetCount; o++)
         {
             var itemOffset = reader.ReadUInt32BE();
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(document.EntryPoints, itemOffset, out _);
-            list ??= [];
-            list.Add((i, o));
+            document.InsertXref(itemOffset, Xref.FromEntry(i, o));
         }
     }
 
     var disassembler = new Disassembler(reader, document);
 
     // Start disassembling from entry points defined in headers.
-    foreach (var entryPoint in document.EntryPoints)
+    var entryPoints = document.Xrefs.Where(kv => kv.Value.Any(x => x.Type == XrefType.EntryPoint)).ToArray();
+    foreach (var entryPoint in entryPoints)
     {
         try
         {

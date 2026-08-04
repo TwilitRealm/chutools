@@ -51,9 +51,9 @@ public partial class Disassembler
         new("OpenTrack", [Imm8(), CodePointer("Target")]),
         new("CloseTrack", 0x0001, 0x0000),
         new("Call", [CodePointer("Target")]),
-        new("CallF", 0x0002, 0x0008),
+        new("CallF", [Imm8("Condition"), CodePointer("Target")]),
         new("Ret", DisRet, 0x0000, 0x0000),
-        new("RetF", 0x0001, 0x0000),
+        new("RetF", [Imm8("Condition")]),
         new("Jmp", DisJmp, [CodePointer("Target")]),
         new("JmpF", [Imm8("Condition"), CodePointer("Target")]),
         new("JmpTable", DisJmpTable, [Reg(), Imm24().Xref()]),
@@ -179,6 +179,8 @@ public partial class Disassembler
             {
                 ctx.Dis._document.Annotations.Insert(new JumpTableAnnotation(interval));
             }
+
+            ctx.Dis.InsertXrefFromCurrentOpcode(val);
         }
 
         return DisassembleResult.Stop(ctx);
