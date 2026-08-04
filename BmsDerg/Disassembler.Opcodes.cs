@@ -51,11 +51,11 @@ public partial class Disassembler
         new("OpenTrack", [Imm8(), CodePointer("Target")]),
         new("CloseTrack", 0x0001, 0x0000),
         new("Call", [CodePointer("Target")]),
-        new("CallF", [Imm8("Condition"), CodePointer("Target")]),
+        new("CallF", DisCallF, [Imm8("Condition"), CodePointer("Target")]),
         new("Ret", DisRet, 0x0000, 0x0000),
-        new("RetF", [Imm8("Condition")]),
+        new("RetF", DisRetF, [Imm8("Condition")]),
         new("Jmp", DisJmp, [CodePointer("Target")]),
-        new("JmpF", [Imm8("Condition"), CodePointer("Target")]),
+        new("JmpF", DisJmpF, [Imm8("Condition"), CodePointer("Target")]),
         new("JmpTable", DisJmpTable, [Reg(), Imm24().Xref()]),
         new("CallTable", [Reg(), Imm24().Xref()]),
         new("LoopS", 0x0001, 0x0001),
@@ -71,9 +71,9 @@ public partial class Disassembler
         new("ChildWritePort", 0x0002, 0x000C),
         new("ParentReadPort", 0x0002, 0x0000),
         new("ChildReadPort", 0x0002, 0x0000),
-        new("RegLoad", [Imm8("Register").RegId(), Imm16("Value")]),
-        new("Reg", [Imm8("Operation"), Imm8().RegId(), Reg("InputValue")]),
-        new("Reg", [Imm8("Operation"), Imm8().RegId(), Imm16("InputValue")]),
+        new("RegLoad", DisRegLoad, [Imm8("Register").RegId(), Imm16("Value")]),
+        new("Reg", DisReg, [Imm8("Operation"), Imm8().RegId(), Reg("InputValue")]),
+        new("Reg", DisReg, [Imm8("Operation"), Imm8().RegId(), Imm16("InputValue")]),
         new("RegUni", 0x0002, 0x0000),
         null, // TODO: new(&JASSeqParser::cmdRegTblLoad, 0x0004, 0x00E0),
         null,
@@ -191,6 +191,71 @@ public partial class Disassembler
         var val = ctx.Dis._reader.ReadVarInt32();
         return DisassembleResult.Continue(ctx.CustomArgs(new OpcodeDef("Wait", [Imm24()]),
             [OpcodeArgument.Immediate((uint)val)]));
+    }
+
+    private static DisassembleResult DisReg(in OpcodeContext ctx)
+    {
+        string? explanation = null;
+
+        if (ctx.Args[0].Type == OpcodeArgumentType.Immediate)
+        {
+            explanation = ctx.Args[0].Value switch
+            {
+                0 => $"{RegIds.RegIdArg(ctx.Args[1])} = {ctx.Args[2]}",
+                1 => $"{RegIds.RegIdArg(ctx.Args[1])} += {ctx.Args[2]}",
+                2 => $"{RegIds.RegIdArg(ctx.Args[1])} -= {ctx.Args[2]}",
+                3 => $"{RegIds.R3} = {RegIds.RegIdArg(ctx.Args[1])} - {ctx.Args[2]}",
+                4 => $"{RegIds.GetRegName(0x21)} = {RegIds.RegIdArg(ctx.Args[1])} * {ctx.Args[2]}",
+                5 => $"{RegIds.RegIdArg(ctx.Args[1])} &= {ctx.Args[2]}",
+                6 => $"{RegIds.RegIdArg(ctx.Args[1])} |= {ctx.Args[2]}",
+                7 => $"{RegIds.RegIdArg(ctx.Args[1])} ^= {ctx.Args[2]}",
+                8 => $"{RegIds.RegIdArg(ctx.Args[1])} = rand({ctx.Args[2]})",
+                _ => null
+            };
+        }
+
+        return DisassembleResult.Continue(new DecodedOpcode(ctx, explanation));
+    }
+
+    private static DisassembleResult DisRegLoad(in OpcodeContext ctx)
+    {
+        var explanation = $"{RegIds.RegIdArg(ctx.Args[0])} = {ctx.Args[1]}";
+
+        return DisassembleResult.Continue(new DecodedOpcode(ctx, explanation));
+    }
+
+    private static DisassembleResult DisJmpF(in OpcodeContext ctx)
+    {
+        return DescribeCondition(ctx, "jump");
+    }
+
+    private static DisassembleResult DisCallF(in OpcodeContext ctx)
+    {
+        return DescribeCondition(ctx, "call");
+    }
+
+    private static DisassembleResult DisRetF(in OpcodeContext ctx)
+    {
+        return DescribeCondition(ctx, "return");
+    }
+
+    private static DisassembleResult DescribeCondition(in OpcodeContext ctx, string verb)
+    {
+        if (ctx.Args[0].Type != OpcodeArgumentType.Immediate)
+            return DisassembleResult.Continue(ctx);
+
+        var explanation = ctx.Args[0].Value switch
+        {
+            0 => "always",
+            1 => "if r3 == 0",
+            2 => "if r3 != 0",
+            3 => "if r3 == 1",
+            4 => "if r3 < 0",
+            5 => "if r3 > 0",
+        };
+
+        explanation = $"{verb} {explanation}";
+        return DisassembleResult.Continue(new DecodedOpcode(ctx, explanation));
     }
 
     private static DisassembleResult DisDefault(in OpcodeContext ctx)
@@ -320,7 +385,7 @@ public partial class Disassembler
             }
             else
             {
-                return $"r{Value}";
+                return RegIds.GetRegName(Value);
             }
         }
 

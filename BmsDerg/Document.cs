@@ -48,14 +48,16 @@ public sealed class DecodedOpcode
 {
     public Disassembler.OpcodeDef Opcode { get; }
     public Disassembler.OpcodeArgument[] Arguments { get; }
+    public string? Explanation { get; }
 
-    public DecodedOpcode(Disassembler.OpcodeDef opcode, Disassembler.OpcodeArgument[] arguments)
+    public DecodedOpcode(Disassembler.OpcodeDef opcode, Disassembler.OpcodeArgument[] arguments, string? explanation = null)
     {
         Opcode = opcode;
         Arguments = arguments;
+        Explanation = explanation;
     }
 
-    public DecodedOpcode(in Disassembler.OpcodeContext context) : this(context.Def, context.Args)
+    public DecodedOpcode(in Disassembler.OpcodeContext context, string? explanation = null) : this(context.Def, context.Args, explanation)
     {
 
     }

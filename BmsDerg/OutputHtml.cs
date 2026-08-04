@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
 
 using BmsDerg.Utility;
 
@@ -6,7 +8,7 @@ using xayrga.bast;
 
 namespace BmsDerg;
 
-public sealed class OutputHtml
+public sealed partial class OutputHtml
 {
     private const string Header = """
         <!DOCTYPE html>
@@ -85,11 +87,25 @@ public sealed class OutputHtml
                     WriteRawBytes(reader, opcode.Interval, writer);
 
                     var cmdText = DefaultDisassemble(opcode.Decoded.Opcode, opcode.Decoded.Arguments);
+                    writer.Write(cmdText);
 
                     if (opcode.Status != Disassembler.DisassembleResultStatus.Continue)
-                        cmdText += "</span>";
+                        writer.Write("</span>");
 
-                    writer.WriteLine(cmdText);
+                    var opcodeLength = PlainTextLength(cmdText);
+
+                    if (opcode.Decoded.Explanation is { } explanation)
+                    {
+                        const int pad = 40;
+                        if (opcodeLength < pad)
+                            writer.Write(new string(' ', pad - opcodeLength));
+
+                        WriteComment(" ; " + WebUtility.HtmlEncode(explanation), writer);
+                    }
+                    else
+                    {
+                        writer.WriteLine();
+                    }
                     break;
 
                 case JumpTableAnnotation:
@@ -166,15 +182,7 @@ public sealed class OutputHtml
             {
                 sb.Append("<span class='register'>");
 
-                var regValue = RegIds.GetRegName(arg.Value);
-                if (arg.Type == Disassembler.OpcodeArgumentType.Register)
-                {
-                    sb.Append($"r({regValue})");
-                }
-                else
-                {
-                    sb.Append(regValue);
-                }
+                sb.Append(RegIds.RegIdArg(arg));
 
                 sb.Append("</span>");
             }
@@ -229,4 +237,12 @@ public sealed class OutputHtml
             }
         }
     }
+
+    private static int PlainTextLength(string html)
+    {
+        return HtmlMatcherRegex().Replace(html, "").Length;
+    }
+
+    [GeneratedRegex("<.+?>")]
+    private static partial Regex HtmlMatcherRegex();
 }
