@@ -470,6 +470,22 @@ public sealed class AvlTree<TIndex, TItem> where TIndex : IComparable<TIndex> wh
         }
     }
 
+    public void Validate()
+    {
+        Validate(_root);
+    }
+
+    private static void Validate(Node? node)
+    {
+        if (node is null)
+            return;
+
+        AssertNodeOrderValid(node);
+
+        Validate(node.Left);
+        Validate(node.Right);
+    }
+
     private static TIndex Max(TIndex a, TIndex b)
     {
         return a.CompareTo(b) > 0 ? a : b;
@@ -479,7 +495,7 @@ public sealed class AvlTree<TIndex, TItem> where TIndex : IComparable<TIndex> wh
     {
         public TItem Value = value;
         public sbyte Balance;
-        public TIndex MaxValue = value.Interval.StartPos;
+        public TIndex MaxValue = value.Interval.EndPos;
 
         public Node? Left;
         public Node? Right;
