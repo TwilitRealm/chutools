@@ -26,10 +26,55 @@ public sealed class OpcodeAnnotation : BaseDocumentAnnotation
     }
 }
 
-public sealed class JumpTableAnnotation : BaseDocumentAnnotation
+public interface ITableAnnotation : INodeInterval<uint>
+{
+    uint Step { get; }
+    BaseDocumentAnnotation Expanded(Interval<uint> newInterval);
+}
+
+public sealed class JumpTableAnnotation : BaseDocumentAnnotation, ITableAnnotation
 {
     public JumpTableAnnotation(Interval<uint> interval) : base(interval)
     {
+    }
+
+    public uint Step => 3;
+
+    public BaseDocumentAnnotation Expanded(Interval<uint> newInterval)
+    {
+        return new JumpTableAnnotation(newInterval);
+    }
+}
+
+public enum RegTableDataType
+{
+    U8,
+    U16,
+    U24,
+    U32,
+}
+
+public sealed class RegTableAnnotation : BaseDocumentAnnotation, ITableAnnotation
+{
+    public RegTableDataType DataType { get; }
+
+    public RegTableAnnotation(RegTableDataType dataType, Interval<uint> interval) : base(interval)
+    {
+        DataType = dataType;
+    }
+
+    public uint Step => DataType switch
+    {
+        RegTableDataType.U8 => 1,
+        RegTableDataType.U16 => 2,
+        RegTableDataType.U24 => 3,
+        RegTableDataType.U32 => 4,
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+    public BaseDocumentAnnotation Expanded(Interval<uint> newInterval)
+    {
+        return new RegTableAnnotation(DataType, newInterval);
     }
 }
 

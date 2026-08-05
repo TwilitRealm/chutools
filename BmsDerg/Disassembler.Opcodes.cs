@@ -75,7 +75,7 @@ public partial class Disassembler
         new("Reg", DisReg, [Imm8("Operation"), Imm8().RegId(), Reg("InputValue")]),
         new("Reg", DisReg, [Imm8("Operation"), Imm8().RegId(), Imm16("InputValue")]),
         new("RegUni", 0x0002, 0x0000),
-        null, // TODO: new(&JASSeqParser::cmdRegTblLoad, 0x0004, 0x00E0),
+        new("RegTblLoad", DisRegTblLoad, [Imm8("Operation"), Imm8().RegId(), Imm24("Table").Xref(), Reg("Offset")]),
         null,
         null,
         null,
@@ -224,6 +224,40 @@ public partial class Disassembler
         return DisassembleResult.Continue(new DecodedOpcode(ctx, explanation));
     }
 
+    private static DisassembleResult DisRegTblLoad(in OpcodeContext ctx)
+    {
+        RegTableDataType? dataType = null;
+        string? explanation = null;
+        if (ctx.Args[0] is { Type: OpcodeArgumentType.Immediate, Value: var cmd })
+        {
+            (dataType, explanation) = cmd switch
+            {
+                12 => (RegTableDataType.U8, $"= ((u8*){ctx.Args[2]})[{ctx.Args[3]}]"),
+                13 => (RegTableDataType.U16, $"= ((u16*){ctx.Args[2]})[{ctx.Args[3]}]"),
+                14 => (RegTableDataType.U24, $"= ((u24*){ctx.Args[2]})[{ctx.Args[3]}]"),
+                15 => (RegTableDataType.U32, $"= ((u32*){ctx.Args[2]})[{ctx.Args[3]}]"),
+                16 => (RegTableDataType.U32, $"= *(u32*)({ctx.Args[2]} + {ctx.Args[3]})"),
+            };
+        }
+
+        if (dataType != null && ctx.Args[2] is { Type: OpcodeArgumentType.Immediate, Value: var val })
+        {
+            Interval<uint> interval = new(val, val + 3u);
+            if (ctx.Dis._document.Annotations.SearchOverlapping(interval).Count == 0)
+            {
+                ctx.Dis._document.Annotations.Insert(new RegTableAnnotation(dataType.Value, interval));
+            }
+
+            ctx.Dis.InsertXrefFromCurrentOpcode(val);
+        }
+
+        DecodedOpcode opcode = explanation != null
+            ? new DecodedOpcode(ctx, $"{RegIds.RegIdArg(ctx.Args[1])} {explanation}")
+            : new DecodedOpcode(ctx);
+
+        return DisassembleResult.Continue(opcode);
+    }
+
     private static DisassembleResult DisJmpF(in OpcodeContext ctx)
     {
         return DescribeCondition(ctx, "jump");
@@ -265,6 +299,7 @@ public partial class Disassembler
 
     public delegate DisassembleResult DisassemblerFunc(in OpcodeContext context);
 
+    [DebuggerDisplay("Opcode {Name}")]
     public sealed class OpcodeDef
     {
         public string Name { get; }

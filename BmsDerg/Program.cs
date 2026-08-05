@@ -1,5 +1,4 @@
 ﻿using System.CommandLine;
-using System.Runtime.InteropServices;
 
 using Be.IO;
 
@@ -89,7 +88,7 @@ rootCmd.SetAction(result =>
         }
     }
 
-    ExpandJumpTables(document);
+    ExpandTables(document);
     DisassembleJumpTableTargets(document, reader, disassembler);
 
     switch (result.GetValue(optionFormat))
@@ -107,26 +106,30 @@ rootCmd.SetAction(result =>
 
 return rootCmd.Parse(args).Invoke();
 
+static void ExpandSingleTable(Document document, ITableAnnotation table)
+{
+    var startPos = table.Interval.StartPos;
+    uint i;
+    for (i = table.Interval.EndPos;; i += table.Step)
+    {
+        if (document.Annotations.SearchOverlapping(new Interval<uint>(i, i + table.Step)).Count > 0)
+        {
+            break;
+        }
+    }
 
-static void ExpandJumpTables(Document document)
+    var newNode = table.Expanded(new Interval<uint>(startPos, i));
+    document.Annotations.Remove((BaseDocumentAnnotation) table);
+    document.Annotations.Insert(newNode);
+}
+
+static void ExpandTables(Document document)
 {
     var nodes = document.Annotations.SearchOverlapping(new Interval<uint>(0, (uint)document.Data.Length));
 
-    foreach (var node in nodes.Where(n => n is JumpTableAnnotation))
+    foreach (var node in nodes.OfType<ITableAnnotation>())
     {
-        var startPos = node.Interval.StartPos;
-        uint i;
-        for (i = node.Interval.EndPos;; i += 3)
-        {
-            if (document.Annotations.SearchOverlapping(new Interval<uint>(i, i + 3)).Count > 0)
-            {
-                break;
-            }
-        }
-
-        var newNode = new JumpTableAnnotation(new Interval<uint>(startPos, i));
-        document.Annotations.Remove(node);
-        document.Annotations.Insert(newNode);
+        ExpandSingleTable(document, node);
     }
 }
 
@@ -141,7 +144,15 @@ static void DisassembleJumpTableTargets(Document document, BinaryReader reader, 
             reader.BaseStream.Position = i;
             var addr = reader.ReadUInt24BE();
             document.InsertXref(addr, Xref.FromXref(i));
-            disassembler.DisassembleFrom(addr);
+
+            try
+            {
+                disassembler.DisassembleFrom(addr);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Uhhh: {e}");
+            }
         }
     }
 }

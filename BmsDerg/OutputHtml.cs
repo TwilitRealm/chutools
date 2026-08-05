@@ -109,23 +109,47 @@ public sealed partial class OutputHtml
                     break;
 
                 case JumpTableAnnotation:
-                    WriteComment("; Jump table", writer);
-                    BeforeAddress(document, annotation.Interval.StartPos, writer, bstn);
-
-                    var c = 0;
-                    for (var i = annotation.Interval.StartPos; (i + 3) <= annotation.Interval.EndPos; i += 3)
                     {
-                        WriteStartPos(i, writer);
-                        WriteRawBytes(reader, new Interval<uint>(i, i + 3), writer);
-                        reader.BaseStream.Position = i;
-                        writer.Write(XrefLink(reader.ReadUInt24BE()));
+                        WriteComment("; Jump table", writer);
+                        BeforeAddress(document, annotation.Interval.StartPos, writer, bstn);
 
-                        WriteComment($" ; {c}", writer);
+                        var c = 0;
+                        for (var i = annotation.Interval.StartPos; (i + 3) <= annotation.Interval.EndPos; i += 3)
+                        {
+                            WriteStartPos(i, writer);
+                            WriteRawBytes(reader, new Interval<uint>(i, i + 3), writer);
+                            reader.BaseStream.Position = i;
+                            writer.Write(XrefLink(reader.ReadUInt24BE()));
 
-                        c += 1;
+                            WriteComment($" ; {c}", writer);
+
+                            c += 1;
+                        }
+
+                        break;
                     }
 
-                    break;
+                case RegTableAnnotation regTbl:
+                    {
+                        WriteComment($"; Reg table ({regTbl.DataType})", writer);
+                        BeforeAddress(document, annotation.Interval.StartPos, writer, bstn);
+
+                        var c = 0;
+                        for (var i = annotation.Interval.StartPos;
+                             (i + regTbl.Step) <= annotation.Interval.EndPos;
+                             i += regTbl.Step)
+                        {
+                            WriteStartPos(i, writer);
+                            WriteRawBytes(reader, new Interval<uint>(i, i + regTbl.Step), writer);
+                            reader.BaseStream.Position = i;
+
+                            WriteComment($" ; {c}", writer);
+
+                            c += 1;
+                        }
+
+                        break;
+                    }
 
                 default:
                     throw new ArgumentOutOfRangeException();
