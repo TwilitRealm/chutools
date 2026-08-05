@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 
 using BmsDerg.Utility;
 
@@ -108,7 +110,7 @@ public partial class Disassembler
         null,
         null,
         null,
-        null, // TODO: new(&JASSeqParser::cmdPrintf, 0x0000, 0x0000),
+        new("Printf", DisPrintf, []),
         new("Nop", 0x0000, 0x0000),
         new("Finish", DisFinish, 0x0000, 0x0000),
     ];
@@ -118,7 +120,8 @@ public partial class Disassembler
         var voice = _reader.ReadByte();
         var velocity = _reader.ReadByte();
 
-        if (voice == 0)
+        var voiceMasked = (byte)(voice & 7);
+        if (voiceMasked == 0)
         {
             var midi = _reader.ReadVarInt32();
             var ctx = NewContext(DefNoteOnMidi,
@@ -133,7 +136,7 @@ public partial class Disassembler
         {
             var ctx = NewContext(DefNoteOn,
             [
-                OpcodeArgument.Immediate(cmd), OpcodeArgument.Immediate(voice), OpcodeArgument.Immediate(velocity)
+                OpcodeArgument.Immediate(cmd), OpcodeArgument.Immediate(voiceMasked), OpcodeArgument.Immediate(velocity)
             ]);
             return DisassembleResult.Continue(ctx);
         }
@@ -290,6 +293,22 @@ public partial class Disassembler
 
         explanation = $"{verb} {explanation}";
         return DisassembleResult.Continue(new DecodedOpcode(ctx, explanation));
+    }
+
+    private static DisassembleResult DisPrintf(in OpcodeContext ctx)
+    {
+        var buf = new List<byte>();
+        while (true)
+        {
+            var val = ctx.Dis._reader.ReadByte();
+            if (val == 0)
+                break;
+
+            buf.Add(val);
+        }
+
+        var str = Encoding.ASCII.GetString(CollectionsMarshal.AsSpan(buf));
+        return DisassembleResult.Continue(new DecodedOpcode(ctx, $"\"{str}\""));
     }
 
     private static DisassembleResult DisDefault(in OpcodeContext ctx)
