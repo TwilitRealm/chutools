@@ -10,6 +10,7 @@
   <Project Path="beio/beio.csproj" />
   <Project Path="BmsDerg/BmsDerg.csproj" />
   <Project Path="ChuTools.Tests/ChuTools.Tests.csproj" />
+  <Project Path="ibnktool/ibnktool.csproj" />
   <Project Path="jampacked/jampacked.csproj" />
   <Project Path="wsystool/wsystool.csproj" />
 </Solution>
