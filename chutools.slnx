@@ -6,6 +6,9 @@
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Solution Files/Workflows/">
+    <File Path=".github/workflows/build-test.yml" />
+  </Folder>
   <Project Path="bast/bast.csproj" />
   <Project Path="beio/beio.csproj" />
   <Project Path="BmsDerg/BmsDerg.csproj" />
