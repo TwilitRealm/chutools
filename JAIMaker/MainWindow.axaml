@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="870" d:DesignHeight="800"
+        Width="870" Height="800"
+        x:Class="JaiMaker.MainWindow"
+        x:Name="Meee"
+        Title="JAIMaker">
+
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top">
+            <Image DockPanel.Dock="Right" Source="/Assets/coollogo_com-29453469.png" Height="30" RenderOptions.BitmapInterpolationMode="HighQuality"  />
+
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="_File">
+                    <MenuItem Header="Open _AAF..." Click="openAAFToolStripMenuItem_Click" />
+                    <MenuItem Header="Open _BAA..." Click="type1ToolStripMenuItem_Click" />
+                    <MenuItem Header="Import _MIDI..." IsEnabled="{Binding #Meee.FunctionsEnabled}" Click="importMIDIToolStripMenuItem_Click" />
+                    <MenuItem Header="Load _INA..." Click="loadINAToolStripMenuItem_Click" />
+                    <MenuItem Header="_Exit" Click="MenuItem_OnClick" />
+                </MenuItem>
+
+                <MenuItem Header="_About">
+                    <MenuItem Header="Made by _Xayr!" Click="Xayr_OnClick" />
+                    <MenuItem Header="Updated by _Twilit Realm!" Click="TwilitRealm_OnClick" />
+                </MenuItem>
+            </Menu>
+        </DockPanel>
+
+        <TextBlock Name="currentStatus" DockPanel.Dock="Bottom" Margin="4" Text="Waiting." />
+
+        <Grid ColumnDefinitions="*,*">
+            <!-- Left side -->
+            <Grid Grid.Column="0" RowDefinitions="Auto, 45*, Auto, 60*" Margin="2">
+                <TextBlock Grid.Row="0" Text="Bank" Margin="2" />
+                <ListBox Grid.Row="1" Name="banksList" IsEnabled="{Binding #Meee.FunctionsEnabled}" SelectionChanged="BanksList_OnSelectionChanged" />
+                <TextBlock Grid.Row="2" Text="Program" Margin="2" />
+                <ListBox Grid.Row="3" Name="progList" IsEnabled="{Binding #Meee.FunctionsEnabled}" SelectionChanged="progList_SelectedIndexChanged" />
+            </Grid>
+            <!-- Right side -->
+            <StackPanel Grid.Column="1" Margin="2">
+                <Grid Name="TrackGrid" ColumnDefinitions="Auto,*,*,Auto" RowDefinitions="Auto" ColumnSpacing="4">
+                    <TextBlock Grid.Column="1" Grid.Row="0" Text="Bank" />
+                    <TextBlock Grid.Column="2" Grid.Row="0" Text="Program" />
+                    <TextBlock Grid.Column="3" Grid.Row="0" Text="Insert Selected" />
+                </Grid>
+
+                <TextBlock Text="Import a MIDI to use these!" />
+                <CheckBox Name="kbmode" Content="Keyboard Mode" IsEnabled="{Binding #Meee.FunctionsEnabled}" />
+                <TextBlock Text="Tempo" />
+                <NumericUpDown Name="TempoUpDown" Minimum="0" Maximum="2048" Value="120" FormatString="0" ValueChanged="TempoUpDown_ValueChanged" IsEnabled="{Binding #Meee.FunctionsEnabled}" />
+                <Button Content="Export BMS" HorizontalAlignment="Stretch" IsEnabled="{Binding #Meee.MidiFunctionsEnabled}" Click="exportBMS_Click" />
+                <!--
+                <Button Name="launchJSEQ" Content="Launch in JaiSeqX" HorizontalAlignment="Stretch" />
+                -->
+                <TextBlock Text="{Binding #keyOffsetBar.Value, StringFormat='Key Offset: {0}'}" />
+                <Slider Name="keyOffsetBar" TickFrequency="1" IsSnapToTickEnabled="True" Minimum="0" Maximum="100" Value="34" IsEnabled="{Binding #Meee.FunctionsEnabled}" ValueChanged="keyOffsetBar_Scroll" />
+                <TextBlock Text="{Binding #velocityBar.Value, StringFormat='Velocity: {0}'}" />
+                <Slider Name="velocityBar" TickFrequency="1" IsSnapToTickEnabled="True" Minimum="0" Maximum="127" Value="127" IsEnabled="{Binding #Meee.FunctionsEnabled}" ValueChanged="velocityBar_Scroll" />
+            </StackPanel>
+
+        </Grid>
+    </DockPanel>
+</Window>

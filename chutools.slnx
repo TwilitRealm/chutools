@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Libs/">
+    <Project Path="beio/beio.csproj" />
+    <Project Path="libs/MidiSharp/MidiSharp/MidiSharp.csproj" />
+  </Folder>
   <Folder Name="/Solution Files/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
@@ -10,10 +14,10 @@
     <File Path=".github/workflows/build-test.yml" />
   </Folder>
   <Project Path="bast/bast.csproj" />
-  <Project Path="beio/beio.csproj" />
   <Project Path="BmsDerg/BmsDerg.csproj" />
   <Project Path="ChuTools.Tests/ChuTools.Tests.csproj" />
   <Project Path="ibnktool/ibnktool.csproj" />
+  <Project Path="JAIMaker/JaiMaker.csproj" />
   <Project Path="jampacked/jampacked.csproj" />
   <Project Path="wsystool/wsystool.csproj" />
 </Solution>

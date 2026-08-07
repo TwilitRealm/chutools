@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Copyright>Copyright (c) Stephen Toub. All rights reserved.</Copyright>
+    <Company>Stephen Toub</Company>
+    <Description>Library for reading, writing, and manipulating MIDI (*.mid) files.</Description>
+  </PropertyGroup>
+
+</Project>

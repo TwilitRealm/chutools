@@ -7,3 +7,5 @@ obj/
 .DS_Store
 .directory
 thumbs.db
+
+Bass.Net.dll # provide it yourself
