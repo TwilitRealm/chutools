@@ -13,12 +13,22 @@ var argBstn = new Option<FileInfo>("--bstn");
 var optionFormat = new Option<DisassemblyFormat>("--format");
 
 var rootCmd = new RootCommand();
-rootCmd.Arguments.Add(argFile);
-rootCmd.Arguments.Add(argOutput);
-rootCmd.Options.Add(argBstn);
-rootCmd.Options.Add(optionFormat);
 
-rootCmd.SetAction(result =>
+var bscCmd = new Command("bsc");
+bscCmd.Arguments.Add(argFile);
+bscCmd.Arguments.Add(argOutput);
+bscCmd.Options.Add(argBstn);
+bscCmd.Options.Add(optionFormat);
+
+var bmsCmd = new Command("bms");
+bmsCmd.Arguments.Add(argFile);
+bmsCmd.Arguments.Add(argOutput);
+bmsCmd.Options.Add(optionFormat);
+
+rootCmd.Subcommands.Add(bscCmd);
+rootCmd.Subcommands.Add(bmsCmd);
+
+bscCmd.SetAction(result =>
 {
     var bstnFile = result.GetValue(argBstn);
     JBST? bstn = null;
@@ -28,19 +38,8 @@ rootCmd.SetAction(result =>
         bstn = JBST.fromStream(new BeBinaryReader(bstnHandle));
     }
 
-    var file = result.GetValue(argFile)!;
-
-    var ms = new MemoryStream();
-
-    {
-        using var fs = file.OpenRead();
-        fs.CopyTo(ms);
-    }
-
-    ms.Position = 0;
-
+    var ms = LoadInput(result);
     var document = new Document(ms.GetBuffer());
-
     using var reader = new BinaryReader(ms);
 
     var magic1 = reader.ReadByte();
@@ -88,9 +87,27 @@ rootCmd.SetAction(result =>
         }
     }
 
-    ExpandTables(document);
-    DisassembleJumpTableTargets(document, reader, disassembler);
+    FurtherDisassemble(document, reader, disassembler);
+    DoOutput(result, document, reader, bstn);
+});
 
+bmsCmd.SetAction(result =>
+{
+    var ms = LoadInput(result);
+    var document = new Document(ms.GetBuffer());
+    using var reader = new BinaryReader(ms);
+
+    var disassembler = new Disassembler(reader, document);
+    disassembler.DisassembleFrom(0);
+
+    FurtherDisassemble(document, reader, disassembler);
+    DoOutput(result, document, reader, null);
+});
+
+return rootCmd.Parse(args).Invoke();
+
+void DoOutput(ParseResult result, Document document, BinaryReader reader, JBST? bstn)
+{
     switch (result.GetValue(optionFormat))
     {
         case DisassemblyFormat.PlainText:
@@ -102,9 +119,13 @@ rootCmd.SetAction(result =>
         default:
             throw new ArgumentOutOfRangeException();
     }
-});
+}
 
-return rootCmd.Parse(args).Invoke();
+static void FurtherDisassemble(Document document, BinaryReader reader, Disassembler disassembler)
+{
+    ExpandTables(document);
+    DisassembleJumpTableTargets(document, reader, disassembler);
+}
 
 static void ExpandSingleTable(Document document, ITableAnnotation table)
 {
@@ -155,6 +176,20 @@ static void DisassembleJumpTableTargets(Document document, BinaryReader reader, 
             }
         }
     }
+}
+
+MemoryStream LoadInput(ParseResult result)
+{
+    var file = result.GetValue(argFile)!;
+    var ms = new MemoryStream();
+
+    {
+        using var fs = file.OpenRead();
+        fs.CopyTo(ms);
+    }
+
+    ms.Position = 0;
+    return ms;
 }
 
 public enum DisassemblyFormat
