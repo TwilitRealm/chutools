@@ -30,6 +30,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\beio\beio.csproj" />
+    <ProjectReference Include="..\ibnktool\ibnktool.csproj" />
     <ProjectReference Include="..\libs\MidiSharp\MidiSharp\MidiSharp.csproj" />
   </ItemGroup>
   

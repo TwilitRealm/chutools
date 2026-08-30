@@ -7,13 +7,15 @@ using System.Threading.Tasks;
 using Be.IO;
 using System.IO;
 
+using ibnktool;
+
 namespace JaiSeqX.JAI.Types
 {
     public class InstrumentBank
     {
         public int id;
 
-        public Instrument[] Instruments;
+        public Instrument?[] Instruments;
 
         private const uint INST = 0x494E5354;
         private const uint PERC = 0x50455243;
@@ -22,8 +24,7 @@ namespace JaiSeqX.JAI.Types
 
         public void LoadInstrumentBank(BeBinaryReader instReader)
         {
-
-            Instruments = new Instrument[0xF0]; // for some reason, they will only ever have 0xF0 instruments in them
+            Instruments = new Instrument?[0xF0]; // for some reason, they will only ever have 0xF0 instruments in them
 
             var start = instReader.BaseStream.Position;
             instReader.BaseStream.Seek(0xC, SeekOrigin.Current);
@@ -49,162 +50,80 @@ namespace JaiSeqX.JAI.Types
         }
 
 
-        private void loadIBNKJaiV2(BeBinaryReader instReader) 
+        private void loadIBNKJaiV2(BeBinaryReader instReader)
         {
-            long anchor = 0;
-            var BaseAddress = instReader.BaseStream.Position;
-            var current_header = instReader.ReadUInt32();
-            if (current_header != 0x49424e4b) // Check to see if it equals IBNK
+            var ibnk = InstrumentBankv2.CreateFromStream(instReader);
+
+            id = ibnk.id;
+
+            for (var i = 0; i < ibnk.List.Length; i++)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("0x{0:X}", BaseAddress);
-                throw new InvalidDataException("Scanned header is not an IBNK.");
-            }
+                var newInstr = new Instrument();
+                newInstr.Keys = new InstrumentKey[0xF0];
 
-            var IBNKSize = instReader.ReadUInt32();
-            id = instReader.ReadInt32();
-            var flags = instReader.ReadUInt32(); // usually 1, determines if the bank is melodic or used for sound effects. Usually the bank is melodic. 
-            instReader.BaseStream.Seek(0x10, SeekOrigin.Current); // Skip 16 bytes, always 0x00, please document if wrong. 
-            var i = 0;
-            while (true) {
-                anchor = instReader.BaseStream.Position; // Store current section base. 
-                i++;
-               // Console.WriteLine("Iteration {0} 0x{1:X}", i,anchor);
-                current_header = instReader.ReadUInt32();
-              //  Console.WriteLine("GOT HD {0:X}", current_header);
-                if (current_header==0x00)
+                switch (ibnk.List[i])
                 {
-                    break;  // End of section. 
-                } else if (current_header < 0xFFFF) // Read below for explanation
-                {
-                    // I've noticed VERY RARELY, that the section pointer is wrong by two bytes. This sucks. So we check if it's less than two full bytes.
-                    // If it is, we seek back 2 bytes then read again, and our alignment is fixed :). 
-                    // of course, this comes after our check to see if it's 0, which indicates end of section
-                    instReader.BaseStream.Seek(-2, SeekOrigin.Current);
-                    Console.WriteLine("[!] Misalignment detected in IBNK, new position 0x{0:X}",instReader.BaseStream.Position);
-                    anchor = instReader.BaseStream.Position; // 3/14/2019, i forgot this. It's S M R T to update your read base. 
-                    current_header = instReader.ReadUInt32();
-                    Console.WriteLine("New header {0:X}", current_header);
-                }
-                var next_section = ReadJARCSizePointer(instReader); // if that works, go ahead and grab the 'pointer' to the next section. 
-                if (current_header < 0xFFFF)
-                {
-                    Console.WriteLine("Corrupt IBNK 0x{0:X}", BaseAddress);
-                    break;
-                }
-                switch (current_header)
-                {
-                    case 0x4F534354: // OSCT
-                    case 0x52414E44: // RAND 
-                    case 0x454E5654: // EVNT
-                    case 0x53454E53: // SENS 
-                        instReader.BaseStream.Position = anchor + next_section; // Skip section.
+                    case JStandardInstrumentv2 standard:
+                        newInstr.Volume = standard.Volume;
+                        newInstr.Pitch = standard.Pitch;
 
-                        if (instReader.BaseStream.Position > instReader.BaseStream.Length)
-                            throw new UnreachableException();
-                        break;
-                    case INST:
+                        newInstr.IsPercussion = false;
 
+                        int KeyHigh = 0;
+                        int KeyLow = 0;
+
+                        foreach (var key in standard.Keys)
                         {
-                            var NewINST = new Instrument();
-                            var InstCount = instReader.ReadInt32();
-                            NewINST.Keys = new InstrumentKey[0xF0];
-                            for (int instid = 0; instid < InstCount; instid++)
+                            var NewKey = new InstrumentKey();
+                            NewKey.keys = new InstrumentKeyVelocity[0x81];
+                            KeyHigh = key.BaseKey;
+
+                            int VelLow = 0;
+                            int VelHigh = 0;
+                            foreach (var velocity in key.Velocities)
                             {
-                                current_header = instReader.ReadUInt32();
-                                var iebase = instReader.BaseStream.Position;
-                                if (current_header != Inst)
-                                {
-                                    break; // FUCK. 
-                                }
-                                NewINST.oscillator = instReader.ReadInt32();
-                                NewINST.id = instReader.ReadInt32();
+                                var NewVelR = new InstrumentKeyVelocity();
+                                VelHigh = velocity.Velocity;
+                                NewVelR.Pitch = velocity.Pitch;
+                                NewVelR.velocity = velocity.Velocity;
+                                NewVelR.Volume = velocity.Volume;
+                                NewVelR.wave = (uint)velocity.WAVEID;
 
-                                instReader.ReadInt32(); // cant figure out what these are. 
-                                var keyCounts = instReader.ReadInt32(); // How many key regions are in here.
-                                int KeyHigh = 0;
-                                int KeyLow = 0;
-                                for (int k = 0; k < keyCounts; k++)
+                                for (int idx = 0; idx < ( (1+ VelHigh) - VelLow); idx++) // See below for what this is doing
                                 {
-                                    var NewKey = new InstrumentKey();
-                                    NewKey.keys = new InstrumentKeyVelocity[0x81];
-                    
-                                    byte key = instReader.ReadByte(); // Read the key identifierr
-                                    KeyHigh = key;  // Set the highest key to what we just read. 
-                                    instReader.BaseStream.Seek(3, SeekOrigin.Current); // 3 bytes, unused.
-                                    var VelocityRegionCount = instReader.ReadInt32(); // read the number of entries in the velocity region array\
-                                    if (VelocityRegionCount > 0x7F)
-                                    {
-
-                                        Console.WriteLine("Alignment is fucked, IBNK load aborted.");
-                                        Console.WriteLine("E: VelocityRegionCount is too thicc. {0} > 128", VelocityRegionCount);
-                                        Console.WriteLine("IBASE: 0x{0:X} + 0x{1:X} ({2:X})", anchor, iebase - anchor, (instReader.BaseStream.Position - anchor) - (iebase - anchor)  );
-                                        
-                                        return;
-                                    }
-                                    for (int b = 0; b < VelocityRegionCount; b++)
-                                    {
-                                        var NewVelR = new InstrumentKeyVelocity();
-                                        int VelLow = 0;
-                                        int VelHigh = 0;
-                                        {
-                                            var velocity = instReader.ReadByte(); // The velocity of this key.
-                                            VelHigh = velocity;
-                                            instReader.BaseStream.Seek(3, SeekOrigin.Current); // Unused.
-                                            NewVelR.velocity = velocity;
-                                            NewVelR.wave = instReader.ReadUInt16(); // This will be the ID of the wave inside of that wavesystem
-                                            NewVelR.wsysid = instReader.ReadUInt16(); // This will be the ID of the WAVESYSTEM that its in
-                                       
-                                            NewVelR.Volume = instReader.ReadSingle(); // Finetune, volume, float
-                                            NewVelR.Pitch = instReader.ReadSingle(); // finetune pitch, float. 
-                                            for (int idx = 0; idx < (VelHigh - VelLow); idx++) // See below for what this is doing
-                                            {
-                                                NewKey.keys[(VelLow + idx)] = NewVelR;
-                                                NewKey.keys[127] = NewVelR;
-                                            }
-                                            VelLow = VelHigh;
-                                        }
-              
-                                    }
-                                    for (int idx = 0; idx < (KeyHigh - KeyLow); idx++) // The keys are gappy.
-                                    {
-                                        NewINST.Keys[(KeyLow + idx)] = NewKey; // So we want to interpolate the previous keys across the empty ones, so that way it's a region
-                                        NewINST.Keys[127] = NewKey;
-                                    }
-                                    KeyLow = KeyHigh; // Set our new lowest key to the previous highest
+                                    NewKey.keys[(VelLow + idx)] = NewVelR;
+                                    NewKey.keys[127] = NewVelR;
                                 }
+                                VelLow = VelHigh;
                             }
-                            instReader.BaseStream.Position = anchor + next_section; // SAFETY.
 
-                            if (instReader.BaseStream.Position > instReader.BaseStream.Length)
-                                throw new UnreachableException();
-                            break;
+                            for (int idx = 0; idx < (KeyHigh - KeyLow); idx++) // The keys are gappy.
+                            {
+                                newInstr.Keys[(KeyLow + idx)] = NewKey; // So we want to interpolate the previous keys across the empty ones, so that way it's a region
+                                newInstr.Keys[127] = NewKey;
+                            }
+                            KeyLow = KeyHigh;
                         }
-                    case PERC:
 
-                        instReader.BaseStream.Position = anchor + next_section;
-                        if (instReader.BaseStream.Position > instReader.BaseStream.Length)
-                            throw new UnreachableException();
                         break;
-                    case 0x4C495354: // LIST 
-                        instReader.BaseStream.Position = anchor + next_section; // Skip section 
-                        // Explanation: This is just a set of pointers relative to BaseAddress for the instruments, nothing special because we're
-                        // already parsing them above. 
+                    case JPercussionInstrumentv2 percussion:
+                        newInstr.Volume = percussion.Volume;
+                        newInstr.Pitch = percussion.Pitch;
 
-                        if (instReader.BaseStream.Position > instReader.BaseStream.Length)
-                            throw new UnreachableException();
+                        newInstr.IsPercussion = true;
+
+                        //percussion.Keys
+
+                        break;
+                    case null:
                         break;
                     default:
-                        instReader.BaseStream.Position = anchor + next_section; // Skip section. 
-
-                        if (instReader.BaseStream.Position > instReader.BaseStream.Length)
-                            throw new UnreachableException();
-                        break;
+                        throw new ArgumentOutOfRangeException();
                 }
+
+                Instruments[i] = newInstr;
             }
         }
-
-        
 
         private void loadIBNKJaiV1(BeBinaryReader instReader)
         {

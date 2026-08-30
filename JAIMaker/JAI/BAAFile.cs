@@ -91,6 +91,8 @@ namespace JaiSeqX.JAI
                                 IBNK[b.id] = b;
                                 aafRead.BaseStream.Position = anchor; // Return back to our original pos after loading.
 
+                                FixWsysId(b, id);
+
                                 break;
                             }
                         case 2004033568: // WSYS 
@@ -111,6 +113,26 @@ namespace JaiSeqX.JAI
                     }
                 }
              }
+
+            private static void FixWsysId(InstrumentBank bank, uint id)
+            {
+                foreach (var instrument in bank.Instruments)
+                {
+                    if (instrument == null)
+                        continue;
+
+                    foreach (var key in instrument.Keys)
+                    {
+                        if (key == null)
+                            continue;
+
+                        foreach (var velocity in key.keys)
+                        {
+                            velocity?.wsysid = id;
+                        }
+                    }
+                }
+            }
          }
      }
  

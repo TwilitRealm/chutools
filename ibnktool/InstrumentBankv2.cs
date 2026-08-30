@@ -7,7 +7,7 @@ using Be.IO;
 using Newtonsoft.Json;
 namespace ibnktool
 {
-    internal class InstrumentBankv2
+    public class InstrumentBankv2
     {
 
         public int id;
