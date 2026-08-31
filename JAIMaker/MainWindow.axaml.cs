@@ -51,6 +51,7 @@ namespace JaiMaker
         // KeysConverter kk;
         public BitArray keysPressed = new(1024);
         string JaiFile = "";
+        private bool newBms = false;
 
         private readonly List<(NumericUpDown Bank, NumericUpDown Program, Button Insert)> _trackControls = [];
 
@@ -210,6 +211,7 @@ namespace JaiMaker
 
                 var wtf = new AAFFile();
                 wtf.LoadAAFile(path);
+                newBms = false;
                 JaiFile = path;
                 Root.g_AAF = wtf;
                 Root.allWSYS = wtf.WSYS;
@@ -398,7 +400,14 @@ namespace JaiMaker
                 return;
 
             await using var fileStream = await file.OpenWriteAsync();
-            MidiToBMS.doToBMS(currentSequence!, fileStream);
+            if (newBms)
+            {
+                MidiToBMSV2.doToBMS(currentSequence!, fileStream);
+            }
+            else
+            {
+                MidiToBMS.doToBMS(currentSequence!, fileStream);
+            }
         }
 
         private static readonly FilePickerOpenOptions OpenMidiOptions = new()
@@ -465,6 +474,7 @@ namespace JaiMaker
             {
                 var wtf = new BAAFile();
                 wtf.LoadBAAFile(path);
+                newBms = true;
                 JaiFile = path;
                 Root.g_AAF = wtf;
                 Root.allWSYS = wtf.WSYS;
