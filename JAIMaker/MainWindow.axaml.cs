@@ -24,6 +24,8 @@ using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
+using MidiSharp.Events.Meta;
+
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
@@ -436,6 +438,7 @@ namespace JaiMaker
 
                 await using var b = await files[0].OpenReadAsync();
                 currentSequence = MidiSequence.Open(b);
+                TempoUpDown.Value = GetTempoFromMidiFile(currentSequence);
             }
             catch (Exception E)
             {
@@ -444,6 +447,19 @@ namespace JaiMaker
                 await box.ShowWindowDialogAsync(this);
                 Console.WriteLine("heck\n{0}", E);
             }
+        }
+
+        private static int GetTempoFromMidiFile(MidiSequence sequence)
+        {
+            foreach (var ev in sequence.Tracks[0].Events)
+            {
+                if (ev is TempoMetaMidiEvent tempo)
+                {
+                    return 60 * 1000 * 1000 / tempo.Value;
+                }
+            }
+
+            return 120;
         }
 
         private async void type1ToolStripMenuItem_Click(object sender, RoutedEventArgs e)
