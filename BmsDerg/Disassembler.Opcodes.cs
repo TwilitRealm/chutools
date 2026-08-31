@@ -146,7 +146,7 @@ public partial class Disassembler
     {
         var newCtx = new OpcodeContext
         {
-            Dis = this, Def = DefNoteOff, Args = [OpcodeArgument.Immediate((uint)(nibble & 0x8))]
+            Dis = this, Def = DefNoteOff, Args = [OpcodeArgument.Immediate((uint)(nibble & 0x7))]
         };
         return DisassembleResult.Continue(newCtx);
     }
