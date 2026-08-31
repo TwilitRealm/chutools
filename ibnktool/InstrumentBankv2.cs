@@ -7,7 +7,7 @@ using Be.IO;
 using Newtonsoft.Json;
 namespace ibnktool
 {
-    internal class InstrumentBankv2
+    public class InstrumentBankv2
     {
 
         public int id;
@@ -73,7 +73,7 @@ namespace ibnktool
                 if (i == chunkID) 
                     return pos; 
                 else if (pos > (Boundaries))
-                    return 0;
+                    return -1;
             }
         }
 
@@ -92,10 +92,22 @@ namespace ibnktool
 
         private void loadFromStream(BeBinaryReader reader)
         {
-            
+            iBase = (int)reader.BaseStream.Position;
+
             if (reader.ReadUInt32() != IBNK)
                 throw new InvalidOperationException("Data is not IBNK");
             var ibnkSize = reader.ReadUInt32();
+
+            if (iBase != 0)
+            {
+                var newBuf = new byte[ibnkSize + 8];
+                reader.BaseStream.Position = iBase;
+                reader.BaseStream.ReadExactly(newBuf);
+                reader = new BeBinaryReader(new MemoryStream(newBuf, writable: false));
+                reader.BaseStream.Position = 8;
+                iBase = 0;
+            }
+
             Boundaries = ibnkSize;
             id = reader.ReadInt32();
             var flags = reader.ReadInt32();

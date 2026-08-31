@@ -84,5 +84,31 @@ namespace Be.IO
             BinaryPrimitives.WriteUInt16BigEndian(buffer, value);
             OutStream.Write(buffer, 0, 2);
         }
+        
+        public void WriteVarInt(int value)
+        {
+            if (value < 0x80)
+            {
+                Write((byte)value);
+            }
+            else if (value < 0x4000)
+            {
+                Write((byte)(((value >> 7) & 0x7F) | 0x80));
+                Write((byte)(value & 0x7F));
+            }
+            else if (value < 0x20_000)
+            {
+                Write((byte)(((value >> 14) & 0x7F) | 0x80));
+                Write((byte)(((value >> 7) & 0x7F) | 0x80));
+                Write((byte)(value & 0x7F));
+            }
+            else
+            {
+                Write((byte)(((value >> 21) & 0x7F) | 0x80));
+                Write((byte)(((value >> 14) & 0x7F) | 0x80));
+                Write((byte)(((value >> 7) & 0x7F) | 0x80));
+                Write((byte)(value & 0x7F));
+            }
+        }
     }
 }
